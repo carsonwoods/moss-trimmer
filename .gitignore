@@ -2,3 +2,6 @@
 
 # Ignore MacOS specific files
 .DS_Store
+
+# Ignore moss files downloaded during testing
+moss.stanford.edu/
