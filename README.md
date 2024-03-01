@@ -12,4 +12,5 @@ This can be used to ignore similarity results identified between two files in a 
 - wget
 
 ### Installation Instructions
-cargo install moss-trimmer
+Moss Trimmer can be installed using Cargo:
+`cargo install moss-trimmer`
