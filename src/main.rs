@@ -42,6 +42,8 @@ fn trim_results(content: &str, trim_string: &str) -> String {
         if line.contains("</TABLE>") {
             // Reached the end of the table, stop removing lines
             in_table = false;
+            result.push_str(line);
+            result.push('\n');
         }
 
         if line.contains("</TR>") {
