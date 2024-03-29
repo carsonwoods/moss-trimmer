@@ -14,6 +14,10 @@ struct Args {
     /// Removes results not containing the specified string
     #[arg(short, long, value_name = "STRING")]
     trim_string: Option<String>,
+
+    /// Disables download, so only trimming occurs
+    #[arg(short, long, default_value_t = false)]
+    skip_download: bool,
 }
 
 fn trim_results(content: &str, trim_string: &str) -> String {
@@ -58,26 +62,35 @@ fn trim_results(content: &str, trim_string: &str) -> String {
 fn main() -> io::Result<()> {
     let args = Args::parse();
 
-    println!("Starting Download");
+    if !&args.skip_download {
+        println!("Starting download");
 
-    let output = Command::new("wget")
-        .arg("--recursive")
-        .arg("--no-clobber")
-        .arg("--page-requisites")
-        .arg("--html-extension")
-        .arg("--convert-links")
-        .arg("--restrict-file-names=windows")
-        .arg("--domains")
-        .arg("moss.stanford.edu")
-        .arg("--no-parent")
-        .arg("-e")
-        .arg("robots=off")
-        .arg(&args.url)
-        .output()
-        .expect("Could not retrieve results");
+        let output = Command::new("wget")
+            .arg("--recursive")
+            .arg("--no-clobber")
+            .arg("--page-requisites")
+            .arg("--html-extension")
+            .arg("--convert-links")
+            .arg("--restrict-file-names=windows")
+            .arg("--domains")
+            .arg("moss.stanford.edu")
+            .arg("--no-parent")
+            .arg("-e")
+            .arg("robots=off")
+            .arg(&args.url)
+            .output()
+            .expect("Could not retrieve results");
 
-    if output.status.success() {
-        println!("Download successful");
+        if output.status.success() {
+            println!("Download successful");
+        } else {
+            eprintln!(
+                "Download failed: {}",
+                String::from_utf8_lossy(&output.stderr)
+            );
+            return Ok(());
+        }
+
         match args.trim_string {
             Some(trim_string) => {
                 // modifies the URL to better match a path on disk
@@ -91,10 +104,25 @@ fn main() -> io::Result<()> {
                 };
 
                 let mut final_url = String::from(modified_url);
-                if !final_url.ends_with('/') {
-                    final_url.push('/');
+
+                // removes trailing "/" so that the submission
+                // id can be extracted to create filename
+                if final_url.ends_with('/') {
+                    final_url.pop();
                 }
-                final_url.push_str("index.html");
+
+                let mut split_path: Vec<&str> = final_url.split('/').collect();
+
+                let file_name = split_path
+                    .pop()
+                    .expect("ERROR: Trimming cannot be extracted since filename extraction failed");
+
+                // properly set filename
+                if !final_url.ends_with('/') {
+                    final_url.push_str(&format!("/{}.html", file_name));
+                } else {
+                    final_url.push_str(&format!("{}.html", file_name));
+                }
 
                 // Read input file
                 let file_content = fs::read_to_string(&final_url)?;
@@ -109,8 +137,6 @@ fn main() -> io::Result<()> {
                 return Ok(());
             }
         };
-    } else {
-        eprintln!("Download failed: {}", String::from_utf8_lossy(&output.stderr));
     }
 
     Ok(())
