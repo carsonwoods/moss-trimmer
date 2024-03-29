@@ -63,7 +63,7 @@ fn main() -> io::Result<()> {
     let args = Args::parse();
 
     if !&args.skip_download {
-        println!("Starting download");
+        println!("Starting download (please be patient, this can take a while)...");
 
         let output = Command::new("wget")
             .arg("--recursive")
@@ -90,54 +90,46 @@ fn main() -> io::Result<()> {
             );
             return Ok(());
         }
-
-        match args.trim_string {
-            Some(trim_string) => {
-                // modifies the URL to better match a path on disk
-                let trimmed_url = args.url.trim();
-                let modified_url = if trimmed_url.starts_with("https://") {
-                    &trimmed_url[8..]
-                } else if trimmed_url.starts_with("http://") {
-                    &trimmed_url[7..]
-                } else {
-                    trimmed_url
-                };
-
-                let mut final_url = String::from(modified_url);
-
-                // removes trailing "/" so that the submission
-                // id can be extracted to create filename
-                if final_url.ends_with('/') {
-                    final_url.pop();
-                }
-
-                let mut split_path: Vec<&str> = final_url.split('/').collect();
-
-                let file_name = split_path
-                    .pop()
-                    .expect("ERROR: Trimming cannot be extracted since filename extraction failed");
-
-                // properly set filename
-                if !final_url.ends_with('/') {
-                    final_url.push_str(&format!("/{}.html", file_name));
-                } else {
-                    final_url.push_str(&format!("{}.html", file_name));
-                }
-
-                // Read input file
-                let file_content = fs::read_to_string(&final_url)?;
-
-                // Process content in memory
-                let modified_content = trim_results(&file_content, &trim_string);
-
-                // Write modified content back to the same file
-                fs::write(&final_url, modified_content)?;
-            }
-            None => {
-                return Ok(());
-            }
-        };
     }
+
+    match args.trim_string {
+        Some(trim_string) => {
+            println!("Trimming...");
+
+            // modifies the URL to better match a path on disk
+            let trimmed_url = args.url.trim();
+            let modified_url = if trimmed_url.starts_with("https://") {
+                &trimmed_url[8..]
+            } else if trimmed_url.starts_with("http://") {
+                &trimmed_url[7..]
+            } else {
+                trimmed_url
+            };
+
+            let mut final_url = String::from(modified_url);
+
+            // removes trailing "/" so that the submission
+            // id can be extracted to create filename
+            if final_url.ends_with('/') {
+                final_url.pop();
+            }
+            final_url.push_str(".html");
+
+            // Read input file
+            let file_content = fs::read_to_string(&final_url)?;
+
+            // Process content in memory
+            let modified_content = trim_results(&file_content, &trim_string);
+
+            // Write modified content back to the same file
+            fs::write(&final_url, modified_content)?;
+
+            println!("Trimming complete, see trimmed file: {}", final_url);
+        }
+        None => {
+            return Ok(());
+        }
+    };
 
     Ok(())
 }
