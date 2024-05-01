@@ -1,6 +1,7 @@
 use std::fs;
 use std::io;
 use std::process::Command;
+use std::path::Path;
 
 use clap::Parser;
 
@@ -114,7 +115,6 @@ fn main() -> io::Result<()> {
                 Some(x) => match fs::rename("moss.stanford.edu", x.clone()) {
                     Ok(_) => {
                         final_url = final_url.replace("moss.stanford.edu", &x);
-                        println!("Trimming complete, see trimmed file: {}", final_url)
                     }
                     Err(e) => eprintln!(
                         "ERROR: could not rename folder to desired output folder: {}",
@@ -141,11 +141,24 @@ fn main() -> io::Result<()> {
             // id can be extracted to create filename
             // only needed when downloaded archive is being trimmed
             if !args.skip_download {
-                if final_url.ends_with('/') {
-                    final_url.pop();
+                if !Path::new(&final_url).join("index.html").exists() {
+                    println!("WARNING: normal index.html not found, searching for alternative format...");
+                    if final_url.ends_with('/') {
+                        final_url.pop();
+                    }
+                    final_url.push_str(".html");
+                    if !Path::new(&final_url).exists() {
+                        println!("ERROR: could not find the correct index file, please locate manually");
+                        println!("     : and rerun using moss-trimmer with -s and specify the path to the file");
+                        return Ok(());
+                    }
+                } else {
+                    if final_url.ends_with('/') {
+                        final_url.push_str("index.html");
+                    } else {
+                        final_url.push_str("/index.html");
+                    }
                 }
-                final_url.push_str(".html");
-                println!("{}", final_url);
             }
 
             // Read input file
